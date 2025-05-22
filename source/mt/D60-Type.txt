@@ -1,0 +1,637 @@
+
+\newpage
+
+.. Type
+
+The 'Type' class is used to store information about each field's type.
+The 'name' member is the SQLGen type name -- 'Geo'.
+The 'translated' member corresponds to the type name of the target database -- 'DECIMAL(10,7)'.
+The 'defaultValue' member is the appropriate value for the member to be initialised with -- 0.0.
+The 'foreign' member is true if the type represents a foreign key -- Int*.
+The 'primary' member is true if the type represents a primary key -- Int \^{} .
+The 'array' member is true if the type has a size -- 'Text[6]'.
+The 'size' member is the specified size -- 6.
+
+~source/include/sqlgen.h~
+typedef struct _Type
+{
+    String*     name;
+    String*     translated;
+    String*     defaultValue;
+    bool        foreign;
+    bool        primary;
+    bool        array;
+    int         size;
+} Type;
+~
+
+~source/include/sqlgen.h~
+const char* Type_translateName    ( const Type* type, Output output, bool table );
+const char* Type_defaultValue     ( const Type* type, Output output );
+const char* Type_defaultComparison( const Type* type, Output output );
+~
+
+~!source/c/Type.c~
+#include "sqlgen.h"
+~
+
+... Translate Name
+
+~source/c/Type.c~
+const char* Type_translateName( const Type* type, Output output, bool table )
+{
+    const char* ret = "?";
+
+    const char* type_name = String_getContent( type->name );
+
+    if ( CharString_contentEquals( type_name, "Blob" ) )
+    {
+        ret = "BLOB";
+    }
+    else
+    if ( CharString_contentEquals( type_name, "Bool" ) )
+    {
+        ret = "BOOL";
+    }
+    else
+    if ( CharString_contentEquals( type_name, "Boolean" ) )
+    {
+        ret = "BOOL";
+    }
+    else
+    if ( CharString_contentEquals( type_name, "Char" ) )
+    {
+        ret = "CHAR";
+    }
+    else
+    if ( CharString_contentEquals( type_name, "Coordinate" ) )
+    {
+        ret = "DECIMAL(10,7)";
+    }
+    else
+    if ( CharString_contentEquals( type_name, "Date" ) )
+    {
+        ret = "DATE";
+    }
+    else
+    if ( CharString_contentEquals( type_name, "DateTime" ) )
+    {
+        switch ( output )
+        {
+        case PSQL:
+            ret = "TIMESTAMP";
+            break;
+
+        default:
+            ret = "DATETIME";
+        }
+    }
+    else
+    if ( CharString_contentEquals( type_name, "Datetime" ) )
+    {
+        switch ( output )
+        {
+        case PSQL:
+            ret = "TIMESTAMP";
+            break;
+
+        default:
+            ret = "DATETIME";
+        }
+    }
+    else
+    if ( CharString_contentEquals( type_name, "Double" ) )
+    {
+        switch ( output )
+        {
+        case PSQL:
+            ret = "DOUBLE PRECISION";
+            break;
+
+        default:
+            ret = "DOUBLE";
+        }
+    }
+    else
+    if ( CharString_contentEquals( type_name, "Float" ) )
+    {
+        switch ( output )
+        {
+        case PSQL:
+            ret = "REAL";
+            break;
+
+        default:
+            ret = "FLOAT";
+        }
+    }
+    else
+    if ( CharString_contentEquals( type_name, "Geo" ) )
+    {
+        ret = "DECIMAL(10,7)";
+    }
+    else
+    if ( CharString_contentEquals( type_name, "GUID" ) )
+    {
+        ret = "CHAR(36)";
+    }
+    else
+    if ( CharString_contentEquals( type_name, "Guid" ) )
+    {
+        ret = "CHAR(36)";
+    }
+    else
+    if ( CharString_contentEquals( type_name, "Int" ) )
+    {
+        ret = "INT";
+
+        if ( type->primary )
+        {
+            switch( output )
+            {
+            case PSQL:
+                if ( table )
+                {
+                    ret = "SERIAL";
+                }
+                else
+                {
+                    ret = "INT";
+                }
+                break;
+
+            default:
+                ret = "INT";
+            }
+        }
+    }
+    else
+    if ( CharString_contentEquals( type_name, "Integer" ) )
+    {
+        ret = "INT";
+    }
+    else
+    if ( CharString_contentEquals( type_name, "JSON" ) )
+    {
+        ret = "JSON";
+    }
+    else
+    if ( CharString_contentEquals( type_name, "LongBlob" ) )
+    {
+        ret = "LONGBLOB";
+    }
+    else
+    if ( CharString_contentEquals( type_name, "LongText" ) )
+    {
+        switch( output )
+        {
+        case PSQL:
+            ret = "TEXT";
+            break;
+
+        default:
+            ret = "LONGTEXT";
+        }
+    }
+    else
+    if ( CharString_contentEquals( type_name, "Longtext" ) )
+    {
+        switch( output )
+        {
+        case PSQL:
+            ret = "TEXT";
+            break;
+
+        default:
+            ret = "LONGTEXT";
+        }
+    }
+    else
+    if ( CharString_contentEquals( type_name, "MediumText" ) )
+    {
+        switch( output )
+        {
+        case PSQL:
+            ret = "TEXT";
+            break;
+
+        default:
+            ret = "MEDIUMTEXT";
+        }
+    }
+    else
+    if ( CharString_contentEquals( type_name, "Mediumtext" ) )
+    {
+        switch( output )
+        {
+        case PSQL:
+            ret = "TEXT";
+            break;
+
+        default:
+            ret = "MEDIUMTEXT";
+        }
+    }
+    else
+    if ( CharString_contentEquals( type_name, "Money" ) )
+    {
+        ret = "DECIMAL(11,2)";
+    }
+    else
+    if ( CharString_contentEquals( type_name, "Text" ) )
+    {
+        ret = type->size ? "CHAR" : "TEXT";
+    }
+    else
+    if ( CharString_contentEquals( type_name, "Time" ) )
+    {
+        ret = "TIME";
+    }
+    else
+    if ( CharString_contentEquals( type_name, "TimeStamp" ) )
+    {
+        switch( output )
+        {
+        case PSQL:
+            ret = "TIMESTAMPTZ";
+            break;
+
+        default:
+            ret = "TIMESTAMP";
+        }
+    }
+    else
+    if ( CharString_contentEquals( type_name, "Timestamp" ) )
+    {
+        switch( output )
+        {
+        case PSQL:
+            ret = "TIMESTAMPTZ";
+            break;
+
+        default:
+            ret = "TIMESTAMP";
+        }
+    }
+    else
+    if ( CharString_contentEquals( type_name, "Year" ) )
+    {
+        ret = "YEAR";
+    }
+    return ret;
+}
+~
+
+\newpage
+
+... Default Value
+
+~source/c/Type.c~
+const char* Type_defaultValue( const Type* type, Output output )
+{
+    const char* ret = "NULL";
+
+    const char* type_name = String_getContent( type->name );
+
+    if ( CharString_contentEquals( type_name, "Blob" ) )
+    {
+        ret = "NULL";
+    }
+    else
+    if ( CharString_contentEquals( type_name, "Bool" ) )
+    {
+        switch( output )
+        {
+        case PSQL:
+            ret = "FALSE";
+            break;
+
+        default:
+            ret = "0";
+        }
+    }
+    else
+    if ( CharString_contentEquals( type_name, "Boolean" ) )
+    {
+        switch( output )
+        {
+        case PSQL:
+            ret = "FALSE";
+            break;
+
+        default:
+            ret = "0";
+        }
+    }
+    else
+    if ( CharString_contentEquals( type_name, "Char" ) )
+    {
+        ret = "''";
+    }
+    else
+    if ( CharString_contentEquals( type_name, "Coordinate" ) )
+    {
+        ret = "0";
+    }
+    else
+    if ( CharString_contentEquals( type_name, "Date" ) )
+    {
+        switch( output )
+        {
+        case PSQL:
+            ret = "NULL";
+            break;
+
+        default:
+            ret = "0";
+        }
+    }
+    else
+    if ( CharString_contentEquals( type_name, "DateTime" ) )
+    {
+        switch( output )
+        {
+        case PSQL:
+            ret = "TO_TIMESTAMP(0)";
+            break;
+
+        default:
+            ret = "0";
+        }
+    }
+    else
+    if ( CharString_contentEquals( type_name, "Datetime" ) )
+    {
+        switch( output )
+        {
+        case PSQL:
+            ret = "TO_TIMESTAMP(0)";
+            break;
+
+        default:
+            ret = "0";
+        }
+    }
+    else
+    if ( CharString_contentEquals( type_name, "Double" ) )
+    {
+        ret = "0";
+    }
+    else
+    if ( CharString_contentEquals( type_name, "Float" ) )
+    {
+        ret = "0";
+    }
+    else
+    if ( CharString_contentEquals( type_name, "Geo" ) )
+    {
+        ret = "0";
+    }
+    else
+    if ( CharString_contentEquals( type_name, "GUID" ) )
+    {
+        ret = "NULL";
+    }
+    else
+    if ( CharString_contentEquals( type_name, "Guid" ) )
+    {
+        ret = "NULL";
+    }
+    else
+    if ( CharString_contentEquals( type_name, "Int" ) )
+    {
+        ret = "0";
+    }
+    else
+    if ( CharString_contentEquals( type_name, "Integer" ) )
+    {
+        ret = "0";
+    }
+    else
+    if ( CharString_contentEquals( type_name, "JSON" ) )
+    {
+        ret = "NULL";
+    }
+    else
+    if ( CharString_contentEquals( type_name, "LongBlob" ) )
+    {
+        ret = "NULL";
+    }
+    else
+    if ( CharString_contentEquals( type_name, "LongText" ) )
+    {
+        ret = "NULL";
+    }
+    else
+    if ( CharString_contentEquals( type_name, "Longtext" ) )
+    {
+        ret = "NULL";
+    }
+    else
+    if ( CharString_contentEquals( type_name, "MediumText" ) )
+    {
+        ret = "NULL";
+    }
+    else
+    if ( CharString_contentEquals( type_name, "Mediumtext" ) )
+    {
+        ret = "NULL";
+    }
+    else
+    if ( CharString_contentEquals( type_name, "Money" ) )
+    {
+        ret = "0";
+    }
+    else
+    if ( CharString_contentEquals( type_name, "Text" ) )
+    {
+        ret = "NULL";
+    }
+    else
+    if ( CharString_contentEquals( type_name, "Time" ) )
+    {
+        ret = "0";
+    }
+    else
+    if ( CharString_contentEquals( type_name, "TimeStamp" ) )
+    {
+        switch( output )
+        {
+        case PSQL:
+            ret = "TO_TIMESTAMP(0)";
+            break;
+
+        default:
+            ret = "0";
+        }
+    }
+    else
+    if ( CharString_contentEquals( type_name, "Timestamp" ) )
+    {
+        switch( output )
+        {
+        case PSQL:
+            ret = "TO_TIMESTAMP(0)";
+            break;
+
+        default:
+            ret = "0";
+        }
+    }
+    else
+    if ( CharString_contentEquals( type_name, "Year" ) )
+    {
+        ret = "0";
+    }
+    return ret;
+}
+~
+
+\newpage
+
+... Default Comparison
+
+~source/c/Type.c~
+const char* Type_defaultComparison( const Type* type, Output output )
+{
+    const char* ret = "NULL";
+
+    const char* type_name = String_getContent( type->name );
+
+    if ( CharString_contentEquals( type_name, "Blob" ) )
+    {
+        ret = "''";
+    }
+    else
+    if ( CharString_contentEquals( type_name, "Bool" ) )
+    {
+        ret = "0";
+    }
+    else
+    if ( CharString_contentEquals( type_name, "Boolean" ) )
+    {
+        ret = "0";
+    }
+    else
+    if ( CharString_contentEquals( type_name, "Char" ) )
+    {
+        ret = "''";
+    }
+    else
+    if ( CharString_contentEquals( type_name, "Coordinate" ) )
+    {
+        ret = "0";
+    }
+    else
+    if ( CharString_contentEquals( type_name, "Date" ) )
+    {
+        ret = "0";
+    }
+    else
+    if ( CharString_contentEquals( type_name, "DateTime" ) )
+    {
+        ret = "0";
+    }
+    else
+    if ( CharString_contentEquals( type_name, "Datetime" ) )
+    {
+        ret = "0";
+    }
+    else
+    if ( CharString_contentEquals( type_name, "Double" ) )
+    {
+        ret = "0";
+    }
+    else
+    if ( CharString_contentEquals( type_name, "Float" ) )
+    {
+        ret = "0";
+    }
+    else
+    if ( CharString_contentEquals( type_name, "Geo" ) )
+    {
+        ret = "0";
+    }
+    else
+    if ( CharString_contentEquals( type_name, "GUID" ) )
+    {
+        ret = "''";
+    }
+    else
+    if ( CharString_contentEquals( type_name, "Guid" ) )
+    {
+        ret = "''";
+    }
+    else
+    if ( CharString_contentEquals( type_name, "Int" ) )
+    {
+        ret = "0";
+    }
+    else
+    if ( CharString_contentEquals( type_name, "Integer" ) )
+    {
+        ret = "0";
+    }
+    else
+    if ( CharString_contentEquals( type_name, "JSON" ) )
+    {
+        ret = "''";
+    }
+    else
+    if ( CharString_contentEquals( type_name, "LongBlob" ) )
+    {
+        ret = "''";
+    }
+    else
+    if ( CharString_contentEquals( type_name, "LongText" ) )
+    {
+        ret = "''";
+    }
+    else
+    if ( CharString_contentEquals( type_name, "Longtext" ) )
+    {
+        ret = "''";
+    }
+    else
+    if ( CharString_contentEquals( type_name, "MediumText" ) )
+    {
+        ret = "''";
+    }
+    else
+    if ( CharString_contentEquals( type_name, "Mediumtext" ) )
+    {
+        ret = "''";
+    }
+    else
+    if ( CharString_contentEquals( type_name, "Money" ) )
+    {
+        ret = "0";
+    }
+    else
+    if ( CharString_contentEquals( type_name, "Text" ) )
+    {
+        ret = "''";
+    }
+    else
+    if ( CharString_contentEquals( type_name, "Time" ) )
+    {
+        ret = "0";
+    }
+    else
+    if ( CharString_contentEquals( type_name, "TimeStamp" ) )
+    {
+        ret = "0";
+    }
+    else
+    if ( CharString_contentEquals( type_name, "Timestamp" ) )
+    {
+        ret = "0";
+    }
+    else
+    if ( CharString_contentEquals( type_name, "Year" ) )
+    {
+        ret = "0";
+    }
+    return ret;
+}
+~

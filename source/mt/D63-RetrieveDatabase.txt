@@ -1,0 +1,23 @@
+
+\newpage
+
+..  Retrieve Database
+
+~source/include/sqlgen.h~
+String* RetrieveDatabase();
+~
+
+~source/c/main.c~
+#include "stdlib.h"
+
+String* RetrieveDatabase()
+{
+    String* database = null;
+    const char* _database = getenv( "SQLGEN_DATABASE" );
+    if ( _database )
+    {
+        database = String_new( _database );
+    }
+    return database;
+}
+~

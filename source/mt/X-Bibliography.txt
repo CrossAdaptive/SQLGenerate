@@ -1,0 +1,8 @@
+
+[1]	SPGen -- Stored Procedure Generator \newline
+	See: https://spgen.org
+
+[2]	SQLGen -- SQL Gen(erator) \newline
+
+[3] Libbase -- https://libbase.com \newline
+	dep/libbase-0.1.quasi.txt

@@ -1,0 +1,50 @@
+
+\newpage
+
+..  Retrieve IO
+
+~source/include/sqlgen.h~
+IO* RetrieveIO( const Arguments* arguments );
+~
+
+~source/c/main.c~
+IO* RetrieveIO( const Arguments* arguments )
+{
+    IO* io = null;
+
+    if ( arguments )
+    {
+        const char*   flags[2] = { "-f", 0 };
+        const String* filepath = Arguments_getStringFor_flag_default( arguments, "-f", null );
+
+        if ( filepath )
+        {
+            let  _filepath = String_getContent (  filepath );
+            Path* path     = Path_new          ( _filepath );
+            File* file     = File_IfExists_path(  &path    );
+            {
+                if ( !file )
+                {
+                    Console_Print_pattern_valist( "Could not find: ", Path_getAbsolute( path ) );
+                }
+                else
+                {
+                    File_open( file );
+                    
+                    io = File_takeIO( file );
+
+                    IO_open_mode( io, "r" );
+                }
+            }
+            Delete( &path );
+            Delete( &file );
+        }
+        else
+        {
+            io = IO_StdIn();
+        }
+    }
+
+    return io;
+}
+~

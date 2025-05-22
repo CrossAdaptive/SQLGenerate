@@ -1,0 +1,1009 @@
+
+\newpage
+
+... Table Spec Parse
+
+*Private Functions*
+
+~source/c/TableSpec.c~
+static void        _printToken( const Token* token, IO* out );
+static bool        _printError( const Token* token, IO* out, Tokenizer* tokenizer, const char* expected, const char* message );
+static String*     _transformToLowerCaseString( const char* content );
+
+static bool        _parseTableName                ( TableSpec* self, Tokenizer* tokenizer, IO* out );
+static bool        _parseTable                    ( TableSpec* self, Tokenizer* tokenizer, IO* out );
+static bool        _parseTableInner               ( TableSpec* self, Tokenizer* tokenizer, IO* out );
+static bool        _parseTableInnerMember         ( TableSpec* self, Tokenizer* tokenizer, IO* out );
+static Type*       _parseTableInnerMemberSep      ( TableSpec* self, Tokenizer* tokenizer, IO* out );
+static Type*       _parseTableInnerMemberType     ( TableSpec* self, Tokenizer* tokenizer, IO* out );
+static Type*       _parseTableInnerMemberTypeOpen ( TableSpec* self, Tokenizer* tokenizer, IO* out );
+static int         _parseTableInnerMemberTypeSize ( TableSpec* self, Tokenizer* tokenizer, IO* out );
+static bool        _parseTableInnerMemberTypeClose( TableSpec* self, Tokenizer* tokenizer, IO* out );
+static bool        _parseTableInnerOption         ( TableSpec* self, Tokenizer* tokenizer, IO* out );
+static String*     _parseTableInnerOptionSep      ( TableSpec* self, Tokenizer* tokenizer, IO* out, bool is_list );
+static String*     _parseTableInnerOptionValue    ( TableSpec* self, Tokenizer* tokenizer, IO* out, bool is_list );
+static const char* _parseTableInnerOptionValueSep ( TableSpec* self, Tokenizer* tokenizer, IO* out, bool is_list );
+~
+
+
+\newpage
+
+.... Print Error
+
+~source/c/TableSpec.c~
+void _printToken( const Token* token, IO* out )
+{
+    const String* content = Token_getContent( token );
+
+    IO_print_string( out, content );
+
+    if ( TOKEN_NEWLINE == Token_getType( token ) )
+    {
+        IO_print( out, "# " );
+    }
+}
+~
+
+\newpage
+
+.... Print Error
+
+~source/c/TableSpec.c~
+bool _printError( const Token* token, IO* out, Tokenizer* tokenizer, const char* expected, const char* message )
+{
+    if ( true )
+    {
+        Console_Colour( COLOR_WARNING );
+        _printToken( token, out );
+        Console_Colour( COLOR_LIGHT );
+        {
+            Token* token;
+            bool   loop = true;
+
+            while ( loop && (token = Tokenizer_nextToken( tokenizer )) )
+            {
+                _printToken( token, out );
+
+                if ( TOKEN_CLOSE == Token_getType( token ) )
+                {
+                    if ( String_contentEquals( Token_getContent( token ), "}" ) )
+                    {
+                        loop = false;
+                    }
+                }
+                Delete( &token );
+            }
+
+            token = Tokenizer_nextRealToken( tokenizer, null );
+            if ( Token_contentEquals_chars( token, "\n" ) )
+            {
+                _printToken( token, out );
+            }
+            else
+            {
+                Tokenizer_pushBack_token( tokenizer, &token ); 
+            }
+            Delete( &token );
+        }
+    }
+
+    const char* token_value = String_getChars( Token_getContent( token ) );
+    const char* token_type  = Token_getTypeName( token );
+          int   line        = Token_getLine    ( token );
+          int   column      = Token_getColumn  ( token );
+
+    IO_print( out, "\n" );
+    IO_print( out, "\n" );
+
+    Console_Colour( COLOR_NORMAL  );
+    Console_Colour( COLOR_WARNING );
+    Console_Print_pattern_valist( "Error: Expected %s %s %s (%s) at line: %i, column: %i\n", expected, message, token_value, token_type, line, column );
+    Console_Colour( COLOR_LIGHT );
+
+    return false;
+}
+~
+
+~source/c/TableSpec.c~
+static String* _transformToLowerCaseString( const char* content )
+{
+    String*       ret = null;
+    StringBuffer* sb  = StringBuffer_new();
+    char          ch;
+
+    while ( *content )
+    {
+        ch = tolower( (unsigned char) *content );
+
+        StringBuffer_append_char( sb, ch );
+        content++;
+    }
+
+    ret = String_new( StringBuffer_getChars( sb ) );
+
+    Delete( &sb );
+
+    return ret;
+}
+~
+
+~
+//  
+//  table base_users { @trident: Text[10] }
+//  ^
+~
+
+~source/c/TableSpec.c~
+TableSpec*
+TableSpec_Parse( Tokenizer* tokenizer, IO* out, const String* output, const String* database )
+{
+    TableSpec* self      = TableSpec_new( output, database );
+    Token*     token     = null;
+    bool       loop      = true;
+
+    while ( loop && (token = Tokenizer_nextRealToken( tokenizer, null )) )
+    {
+        if ( TOKEN_COMMENT == Token_getType( token ) )
+        {
+            //  ignore comment
+        }
+        else
+        if ( TOKEN_NEWLINE == Token_getType( token ) )
+        {
+            //  ignore newline
+        }
+        else
+        if ( !Token_contentEquals_chars( token, "table" ) )
+        {
+            loop = _printError( token, out, tokenizer, "table", "Invalid token:" );
+        }
+        else
+        {
+            Console_Colour( COLOR_COMMENT );
+            IO_print( out, "#\n"     );
+            IO_print( out, "# table" );
+
+            self->valid = _parseTableName( self, tokenizer, out );
+
+            if ( self->valid )
+            {
+                IO_print( out, "\n#\n" );
+            }
+            Console_Colour( COLOR_NORMAL );
+            loop = false;
+        }
+
+        Delete( &token );
+    }
+
+    if ( !self->valid )
+    {
+        Delete( &self->members );
+        Delete( &self->options );
+        Delete( &self          );
+    }
+   
+    return self;
+}
+~
+
+.... parse Table Name
+
+~
+//  
+//  table base_users { @trident: Text[10] }
+//        ^
+~
+
+~source/c/TableSpec.c~
+bool _parseTableName( TableSpec* self, Tokenizer* tokenizer, IO* out )
+{
+    bool   ret   = false;
+    bool   loop  = true;
+    Token* token = null;
+
+    while ( loop && (token = Tokenizer_nextRealToken( tokenizer, out )) )
+    {
+        switch ( Token_getType( token ) )
+        {
+        case TOKEN_COMMENT:
+        case TOKEN_NEWLINE:
+            _printToken( token, out );
+            //  ignore comment
+            break;
+
+        case TOKEN_WORD:
+            _printToken( token, out );
+            self->name =  String_new( String_getContent( Token_getContent( token ) ) );
+            ret        = _parseTable( self, tokenizer, out );
+            loop       =  false;
+            break;
+
+        default:
+            loop = _printError( token, out, tokenizer, "<Table Name>", "Invalid token:" );
+        }
+    }
+
+    return ret;
+}
+~
+
+\newpage
+
+.... parse Table
+
+~
+//  
+//  table base_users { @trident: Text[10] }
+//                   ^
+~
+
+~source/c/TableSpec.c~
+bool _parseTable( TableSpec* self, Tokenizer* tokenizer, IO* out )
+{
+    bool   ret   = false;
+    bool   loop  = true;
+    Token* token = null;
+
+    while ( loop && (token = Tokenizer_nextRealToken( tokenizer, out )) )
+    {
+        switch ( Token_getType( token ) )
+        {
+        case TOKEN_COMMENT:
+        case TOKEN_NEWLINE:
+            _printToken( token, out );
+            //  ignore comment
+            break;
+
+        case TOKEN_OPEN:
+            if ( !Token_contentEquals_chars( token, "{" ) )
+            {
+                loop = _printError( token, out, tokenizer, "{", "Invalid token:" );
+            }
+            else
+            {
+                _printToken( token, out );
+                ret  = _parseTableInner( self, tokenizer, out );
+                loop = false;
+            }
+            break;
+
+        default:
+            loop = _printError( token, out, tokenizer, "{", "Invalid token:" );
+        }
+    }
+    return ret;
+}
+~
+
+\newpage
+
+.... parse Table Inner
+
+~
+//  
+//  table base_users { }
+//  table base_users { @trident: Text[10] }
+//  table base_users { %Filter: = ORG_ID }
+//                     ^
+~
+
+~source/c/TableSpec.c~
+bool _parseTableInner( TableSpec* self, Tokenizer* tokenizer, IO* out )
+{
+    bool   ret   = false;
+    bool   loop  = true;
+    Token* token = null;
+
+    while ( loop && (token = Tokenizer_nextRealToken( tokenizer, out )) )
+    {
+        switch ( Token_getType( token ) )
+        {
+        case TOKEN_COMMENT:
+        case TOKEN_NEWLINE:
+            _printToken( token, out );
+            //  ignore comment
+            break;
+
+        case TOKEN_CLOSE:
+            if ( !Token_contentEquals_chars( token, "}" ) )
+            {
+                loop = _printError( token, out, tokenizer, "@,#,}", "Invalid token:" );
+            }
+            else
+            {
+                _printToken( token, out );
+                ret = true;
+            }
+            loop = false;
+            break;
+
+        case TOKEN_SYMBOL_PREFIX:
+        case TOKEN_SYMBOL_CONTEXTUAL:
+        case TOKEN_SYMBOL:
+            if ( Token_contentEquals_chars( token, "@" ) )
+            {
+                _printToken( token, out );
+                loop = (ret = _parseTableInnerMember( self, tokenizer, out ));
+            }
+            else
+            if ( Token_contentEquals_chars( token, "%" ) )
+            {
+                _printToken( token, out );
+                loop = (ret = _parseTableInnerOption( self, tokenizer, out ));
+            }
+            else
+            {
+                loop = _printError( token, out, tokenizer, "@,#,}", "Invalid token:" );
+            }
+            break;
+
+        default:
+            loop = _printError( token, out, tokenizer, "@,#,}", "Invalid token:" );
+        }
+    }
+    return ret;
+}
+~
+
+\newpage
+
+.... parse Table Inner Member
+
+~
+//  
+//  table base_users { @trident: Text[10] }
+//                      ^
+~
+
+~source/c/TableSpec.c~
+#include <stdio.h>
+
+bool _parseTableInnerMember( TableSpec* self, Tokenizer* tokenizer, IO* out )
+{
+    bool   ret   = false;
+    bool   loop  = true;
+    Token* token = null;
+
+    String* name = null;
+    Type*   type = null;
+
+    while ( loop && (token = Tokenizer_nextRealToken( tokenizer, out )) )
+    {
+        switch ( Token_getType( token ) )
+        {
+        case TOKEN_COMMENT:
+        case TOKEN_NEWLINE:
+            _printToken( token, out );
+            //  ignore comment
+            break;
+
+        case TOKEN_WORD:
+            _printToken( token, out );
+
+            switch( self->output )
+            {
+            case PSQL:
+                name = _transformToLowerCaseString( String_getContent( Token_getContent( token ) ) );
+                break;
+
+            default:
+                name = String_new( String_getContent( Token_getContent( token ) ) );
+            }
+            type = _parseTableInnerMemberSep( self, tokenizer, out );
+            ret  = (null != type);
+
+            if ( type && type->primary )
+            {
+                self->primaryKey = String_new( String_getContent( name ) );
+            }
+            loop = false;
+            break;
+
+        default:
+            loop = _printError( token, out, tokenizer, "<name>", "Invalid token:" );
+        }
+        Delete( &token );
+    }
+
+    if ( name && type )
+    {
+        const char* key = String_getContent( name );
+
+        Dictionary_add_key_object( self->members, key, (Object**) &type );
+
+        Delete( &name );
+    }
+
+    return ret;
+}
+~
+
+\newpage
+
+.... parse Table Inner Member Sep
+
+~
+//  
+//  table base_users { @trident: Text[10] }
+//                             ^
+~
+
+~source/c/TableSpec.c~
+Type* _parseTableInnerMemberSep( TableSpec* self, Tokenizer* tokenizer, IO* out )
+{
+    Type*   ret   = null;
+    bool    loop  = true;
+    Token*  token = null;
+
+    while ( loop && (token = Tokenizer_nextRealToken( tokenizer, out )) )
+    {
+        switch ( Token_getType( token ) )
+        {
+        case TOKEN_COMMENT:
+        case TOKEN_NEWLINE:
+            _printToken( token, out );
+            //  ignore comment
+            break;
+
+        case TOKEN_SYMBOL_INFIX:
+            if ( !Token_contentEquals_chars( token, ":" ) )
+            {
+                loop = _printError( token, out, tokenizer, ":", "Invalid token:" );
+            }
+            else
+            {
+                _printToken( token, out );
+                ret = _parseTableInnerMemberType( self, tokenizer, out );
+            }
+            loop = false;
+            break;
+
+        default:
+            loop = _printError( token, out, tokenizer, ":", "Invalid token:" );
+        }
+        Delete( &token );
+    }
+    return ret;
+}
+~
+
+\newpage
+
+.... parse Table Inner Member Type
+
+~
+//  
+//  table base_users { @trident: Text[10] }
+//                               ^
+~
+
+~source/c/TableSpec.c~
+Type* _parseTableInnerMemberType( TableSpec* self, Tokenizer* tokenizer, IO* out )
+{
+    Type*   ret   = null;
+    Token*  token = null;
+    bool    loop  = true;
+
+    while ( loop && (token = Tokenizer_nextRealToken( tokenizer, out )) )
+    {
+        switch ( Token_getType( token ) )
+        {
+        case TOKEN_COMMENT:
+        case TOKEN_NEWLINE:
+            _printToken( token, out );
+            //  ignore comment
+            break;
+
+        case TOKEN_WORD:
+            _printToken( token, out );
+            ret  = _parseTableInnerMemberTypeOpen( self, tokenizer, out );
+
+            if ( ret )
+            {
+                if ( (ret->name = String_new( String_getContent( Token_getContent( token ) ) )) )
+                {
+                    const char* translated = Type_translateName( ret, self->output, true );
+
+                    if ( ret->array )
+                    {
+                        ret->translated = String_new_format( "%s(%i)", translated, ret->size );
+                    }
+                    else
+                    {
+                        ret->translated = String_new_format( "%s", translated );
+                    }
+                    ret->defaultValue = String_new( Type_defaultValue( ret, self->output ) );
+                }
+            }
+            loop = false;
+            break;
+
+        default:
+            loop = _printError( token, out, tokenizer, "<value>", "Invalid token:" );
+        }
+        Delete( &token );
+    }
+    return ret;
+}
+~
+
+\newpage
+
+.... parse Table Inner Member Type Open
+
+~
+//  
+//  table base_users { @trident: Text }
+//  table base_users { @trident: Text @next...
+//  table base_users { @trident: Text %next...
+//  table base_users { @trident: Text [10] }
+//                                    ^
+~
+
+~source/c/TableSpec.c~
+Type* _parseTableInnerMemberTypeOpen( TableSpec* self, Tokenizer* tokenizer, IO* out )
+{
+    Type*   ret   = null;
+    Token*  token = null;
+    bool    loop  = true;
+
+    while ( loop && (token = Tokenizer_nextRealToken( tokenizer, out )) )
+    {
+        switch ( Token_getType( token ) )
+        {
+        case TOKEN_COMMENT:
+        case TOKEN_NEWLINE:
+            _printToken( token, out );
+            //  ignore comment
+            break;
+
+        case TOKEN_SYMBOL_PREFIX:
+        case TOKEN_SYMBOL_CONTEXTUAL:
+        case TOKEN_SYMBOL:
+            {
+            const char* content = String_getContent( Token_getContent( token ) );
+            if
+            (
+                ('@' == content[0]) ||
+                ('%' == content[0]) ||
+                ('}' == content[0])
+            )
+            {
+                Tokenizer_pushBack_token( tokenizer, &token );
+
+                ret = New( Type );
+            }
+            else
+            if ( Token_contentEquals_chars( token, "^" ) )
+            {
+                _printToken( token, out );
+                ret          = New( Type );
+                ret->primary = true;
+            }
+            else
+            if ( Token_contentEquals_chars( token, "*" ) )
+            {
+                _printToken( token, out );
+                ret          = New( Type );
+                ret->foreign = true;
+            }
+            else
+            {
+                loop = _printError( token, out, tokenizer, ":", "Invalid token:" );
+            }
+            loop = false;
+            }
+            break;
+
+        case TOKEN_OPEN:
+            _printToken( token, out );
+            if ( !Token_contentEquals_chars( token, "[" ) )
+            {
+                loop = _printError( token, out, tokenizer, ":", "Invalid token:" );
+            }
+            else
+            {
+                int size = _parseTableInnerMemberTypeSize( self, tokenizer, out );
+
+                if ( 0 <= size )
+                {
+                    ret        = New( Type );
+                    ret->array = true;
+                    ret->size  = size;
+                }
+                loop = false;
+            }
+            break;
+
+        default:
+            _printToken( token, out );
+            loop = _printError( token, out, tokenizer, "<value>", "Invalid token:" );
+        }
+    }
+    return ret;
+}
+~
+
+\newpage
+
+.... parse Table Inner Member Type Size
+
+~
+//  
+//  table base_users { @trident: Text [10] }
+//                                     ^
+~
+
+~source/c/TableSpec.c~
+int _parseTableInnerMemberTypeSize( TableSpec* self, Tokenizer* tokenizer, IO* out )
+{
+    int     ret   =   -1;
+    Token*  token = null;
+    bool    loop  = true;
+
+    while ( loop && (token = Tokenizer_nextRealToken( tokenizer, out )) )
+    {
+        switch ( Token_getType( token ) )
+        {
+        case TOKEN_COMMENT:
+        case TOKEN_NEWLINE:
+            _printToken( token, out );
+            //  ignore comment
+            break;
+
+        case TOKEN_NUMBER:
+            _printToken( token, out );
+            ret  =  String_toNumber_default( Token_getContent( token ), -1 );
+            ret  = _parseTableInnerMemberTypeClose( self, tokenizer, out ) ? ret : -1;
+            loop =  false;
+            break;
+
+        default:
+            loop = _printError( token, out, tokenizer, "<value>", "Invalid token:" );
+        }
+    }
+    return ret;
+}
+~
+
+\newpage
+
+.... parse Table Inner Member Type Close
+
+~
+//  
+//  table base_users { @trident: Text [10] }
+//                                       ^
+~
+
+~source/c/TableSpec.c~
+bool _parseTableInnerMemberTypeClose( TableSpec* self, Tokenizer* tokenizer, IO* out )
+{
+    bool    ret   = false;
+    Token*  token =  null;
+    bool    loop  =  true;
+
+    while ( loop && (token = Tokenizer_nextRealToken( tokenizer, out )) )
+    {
+        switch ( Token_getType( token ) )
+        {
+        case TOKEN_COMMENT:
+        case TOKEN_NEWLINE:
+            _printToken( token, out );
+            //  ignore comment
+            break;
+
+        case TOKEN_CLOSE:
+            if ( !Token_contentEquals_chars( token, "]" ) )
+            {
+                ret = _printError( token, out, tokenizer, "]", "Invalid token:" );
+            }
+            else
+            {
+                _printToken( token, out );
+                ret = true;
+            }
+            loop = false;
+            break;
+
+        default:
+            loop = _printError( token, out, tokenizer, "<value>", "Invalid token:" );
+        }
+    }
+    return ret;
+}
+~
+
+\newpage
+
+.... parse Table Inner Option
+
+~
+//  
+//  table base_users { %OrderBy = ONE;TWO,THREE }
+//                      ^
+~
+
+~source/c/TableSpec.c~
+bool _parseTableInnerOption( TableSpec* self, Tokenizer* tokenizer, IO* out )
+{
+    bool   ret   = false;
+    bool   loop  = true;
+    Token* token = null;
+
+    String* name  = null;
+    String* value = null;
+
+    while ( loop && (token = Tokenizer_nextRealToken( tokenizer, out )) )
+    {
+        switch ( Token_getType( token ) )
+        {
+        case TOKEN_COMMENT:
+        case TOKEN_NEWLINE:
+            _printToken( token, out );
+            //  ignore comment
+            break;
+
+        case TOKEN_WORD:
+            name  =  String_new( String_getContent( Token_getContent( token ) ) );
+            if
+            (
+                String_contentEquals( name, "Filter"  ) ||
+                String_contentEquals( name, "OrderBy" ) ||
+                String_contentEquals( name, "Save"    )
+            )
+            {
+                _printToken( token, out );
+                value = _parseTableInnerOptionSep( self, tokenizer, out, true );
+            }
+            else
+            if
+            (
+                String_contentEquals( name, "Module"   ) ||
+                String_contentEquals( name, "Output"   ) ||
+                String_contentEquals( name, "Prefix"   ) ||
+                String_contentEquals( name, "Security" ) ||
+                String_contentEquals( name, "View"     )
+            )
+            {
+                _printToken( token, out );
+                value = _parseTableInnerOptionSep( self, tokenizer, out, false );
+            }
+            else
+            {
+                loop = _printError( token, out, tokenizer, "<name>", "Invalid token:" );
+            }
+            ret   = (null != value);
+            loop  = false;
+            break;
+
+        default:
+            loop = _printError( token, out, tokenizer, "<name>", "Invalid token:" );
+        }
+    }
+
+    if ( name && value )
+    {
+        const char* key = String_getContent( name );
+
+        Dictionary_add_key_object( self->options, key, (Object**) &value );
+
+        Delete( &name );
+    }
+
+    return ret;
+}
+~
+
+\newpage
+
+.... parse Table Inner Option Sep
+
+~
+//  
+//  table base_users { %OrderBy = ONE;TWO,THREE }
+//                              ^
+~
+
+~source/c/TableSpec.c~
+String* _parseTableInnerOptionSep( TableSpec* self, Tokenizer* tokenizer, IO* out, bool is_list )
+{
+    String* ret   = null;
+    bool    loop  = true;
+    Token*  token = null;
+
+    while ( loop && (token = Tokenizer_nextRealToken( tokenizer, out )) )
+    {
+        switch ( Token_getType( token ) )
+        {
+        case TOKEN_COMMENT:
+        case TOKEN_NEWLINE:
+            _printToken( token, out );
+            //  ignore comment
+            break;
+
+        case TOKEN_SYMBOL_INFIX:
+            if ( !Token_contentEquals_chars( token, "=" ) )
+            {
+                loop = _printError( token, out, tokenizer, "=", "Invalid token:" );
+            }
+            else
+            {
+                _printToken( token, out );
+                ret = _parseTableInnerOptionValue( self, tokenizer, out, is_list );
+            }
+            loop = false;
+            break;
+
+        default:
+            loop = _printError( token, out, tokenizer, ":", "Invalid token:" );
+        }
+    }
+    return ret;
+}
+~
+
+\newpage
+
+.... parse Table Inner Option Value
+
+~
+//  
+//  table base_users { %OrderBy = ONE;TWO,THREE }
+//                                ^
+~
+
+~source/c/TableSpec.c~
+String* _parseTableInnerOptionValue( TableSpec* self, Tokenizer* tokenizer, IO* out, bool is_list  )
+{
+    String*     ret   = null;
+    String*     tmp   = null;
+    Token*      token = null;
+    bool        loop  = true;
+    bool        size  = 0;
+    const char* sep   = null;
+
+    StringBuffer* sb = StringBuffer_new();
+
+    while ( loop && (token = Tokenizer_nextRealToken( tokenizer, out )) )
+    {
+        switch ( Token_getType( token ) )
+        {
+        case TOKEN_COMMENT:
+        case TOKEN_NEWLINE:
+            _printToken( token, out );
+            //  ignore comment
+            break;
+
+        case TOKEN_WORD:
+            _printToken( token, out );
+
+            switch( self->output )
+            {
+            case PSQL:
+                tmp = _transformToLowerCaseString( String_getContent( Token_getContent( token ) ) );
+                break;
+
+            default:
+                tmp = String_new( String_getContent( Token_getContent( token ) ) );
+            }
+
+            StringBuffer_append_string( sb, tmp );
+
+            Delete( &tmp );
+
+            sep = _parseTableInnerOptionValueSep( self, tokenizer, out, is_list );
+
+            if ( sep && CharString_length( sep ) )
+            {
+                StringBuffer_append_chars( sb, sep );
+            }
+            else
+            {
+                loop = false;
+            }
+            break;
+
+        default:
+            loop = _printError( token, out, tokenizer, "<value>", "Invalid token:" );
+        }
+    }
+
+    //
+    //  'sep' is either "", if valid end of option; or "," / ";" if allowed;
+    //  otherwise null indicates invald characters.
+    //
+
+    if ( sep )
+    {
+        ret = String_new( StringBuffer_getChars( sb ) );
+    }
+    return ret;
+}
+~
+
+\newpage
+
+.... parse Table Inner Option Value Sep
+
+~
+//  
+//  table base_users { %OrderBy = ONE @next...
+//  table base_users { %OrderBy = ONE %next...
+//  table base_users { %OrderBy = ONE ; TWO...
+//  table base_users { %OrderBy = TWO , THREE...
+//                                   ^
+~
+
+~source/c/TableSpec.c~
+const char* _parseTableInnerOptionValueSep( TableSpec* self, Tokenizer* tokenizer, IO* out, bool is_list )
+{
+    const char* ret   = null;
+    Token*      token = null;
+    bool        loop  = true;
+
+    while ( loop && (token = Tokenizer_nextRealToken( tokenizer, out )) )
+    {
+        switch ( Token_getType( token ) )
+        {
+        case TOKEN_COMMENT:
+        case TOKEN_NEWLINE:
+            _printToken( token, out );
+            //  ignore comment
+            break;
+
+        case TOKEN_SYMBOL_PREORPOSTFIX:
+            if ( Token_contentEquals_chars( token, "+" ) )
+            {
+                _printToken( token, out );
+                ret  = " ";
+                loop = false;
+            }
+            else
+            {
+                loop = _printError( token, out, tokenizer, "<value>", "Invalid token:" );
+            }
+            break;
+
+        case TOKEN_CLOSE:
+        case TOKEN_SYMBOL_CONTEXTUAL:
+        case TOKEN_SYMBOL:
+            if
+            (
+                Token_contentEquals_chars( token, "}" ) ||
+                Token_contentEquals_chars( token, "%" )
+            )
+            {
+                Tokenizer_pushBack_token( tokenizer, &token );
+                ret  = "";
+                loop = false;
+            }
+            else
+            if ( Token_contentEquals_chars( token, "," ) )
+            {
+                _printToken( token, out );
+                ret  = ",";
+                loop = false;
+            }
+            else
+            if ( is_list && Token_contentEquals_chars( token, ";" ) )
+            {
+                _printToken( token, out );
+                ret  = ";";
+                loop = false;
+            }
+            else
+            {
+                loop = _printError( token, out, tokenizer, "<value>", "Invalid token:" );
+            }
+            break;
+
+        default:
+            loop = _printError( token, out, tokenizer, "<value>", "Invalid token:" );
+        }
+        Delete( &token );
+    }
+    return ret;
+}
+~

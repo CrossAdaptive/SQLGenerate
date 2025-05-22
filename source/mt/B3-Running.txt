@@ -1,0 +1,24 @@
+\newpage
+
+. Running
+
+For the sake of simplicity, 'sqlgen' is run as command-line filter program.
+In other words, the table specification is piped into the program using standard in and the output is output through standard out.
+This allows the program to be run with minimal privileges.
+
+~
+sqlgen < my_table_spec.txt > my_generated.sql
+~
+
+
+or
+
+~
+cat my_table_spec.txt | sqlgen > my_generated.sql
+~
+
+or event directly into mysql
+
+~
+cat my_table_spec.txt | sqlgen > mysql -D my_db_name
+~

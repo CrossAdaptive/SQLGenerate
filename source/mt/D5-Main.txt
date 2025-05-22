@@ -1,0 +1,45 @@
+
+.  Main
+
+~!source/c/main.c~
+#include "libbase.h"
+#include "sqlgen.h"
+~
+
+~source/c/main.c~
+int main( int argc, const char** argv )
+{
+    TableSpec* table_spec;
+    IO*        in;
+    IO*        out       = IO_StdOut();
+    String*    mysql     = String_new( "mysql" );
+    Arguments* arguments = Arguments_new_count_arguments( argc, argv );
+    Tokenizer* tokenizer = Tokenizer_new( 1 );
+
+    populate_typemap();
+
+    if ( (in = RetrieveIO( arguments )) )
+    {
+        const String* output   = Arguments_getStringFor_flag_default( arguments, "-t", mysql );
+        const String* database = Arguments_getStringFor_flag_default( arguments, "-d", null  );
+
+        if ( !database ) database = RetrieveDatabase();
+
+        Tokenizer_ingest( tokenizer, in );
+
+        while ( (table_spec = TableSpec_Parse( tokenizer, out, output, database )) )
+        {
+            TableSpec_output( table_spec, out );
+
+            Delete( &table_spec );
+        }
+    }
+
+    Delete( &in        );
+    Delete( &out       );
+    Delete( &mysql     );
+    Delete( &arguments );
+
+    Platform_Meminfo();
+}
+~

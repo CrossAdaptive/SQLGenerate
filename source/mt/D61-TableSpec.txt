@@ -1,0 +1,103 @@
+
+.. Table Spec
+
+~source/include/sqlgen.h~
+typedef struct _TableSpec TableSpec;
+
+TableSpec* TableSpec_Parse ( Tokenizer* tokenizer, IO* out, const String* output, const String* database );
+void       TableSpec_output( TableSpec*  self, IO* out );
+~
+
+The 'TableSpec' is an ADT (Abstract Data Type) that is used to encapsulate the functionality that parses table specifications.
+It has two public functions:
+'_Parse',  which is used to parse a TableSpec object from an IO stream; and
+'_Output', which is used to output generate sql for that table spec to an IO stream.
+
+,,, Includes
+
+~!source/c/TableSpec.c~
+#include "sqlgen.h"
+~
+
+\newpage
+
+,,, Structure
+
+~source/c/TableSpec.c~
+struct _TableSpec
+{
+    Object      super;
+
+    Output      output;
+    String*     database;
+    Dictionary* members; // member name ---> type
+    Dictionary* options; // option name ---> value
+
+    String*     name;
+    String*     prefix;
+    String*     primaryKey;
+    bool        valid;
+};
+~
+
+~source/c/TableSpec.c~
+static TableSpec* TableSpec_new( const String* output, const String* database );
+static TableSpec* TableSpec_destruct( TableSpec* self );
+~
+
+... Table Spec New
+
+~source/c/TableSpec.c~
+TableSpec* TableSpec_new( const String* output, const String* database )
+{
+    TableSpec* self = New( TableSpec );
+
+    if ( self )
+    {
+        Object_init( &self->super, (Destructor) TableSpec_destruct );
+
+        self->database = String_copy( database );
+        self->members  = Dictionary_new();
+        self->options  = Dictionary_new();
+
+        if ( output )
+        {
+            if ( String_contentEquals( output, "psql" ) )
+            {
+                self->output = PSQL;
+            }
+            else
+            if ( String_contentEquals( output, "tsql" ) )
+            {
+                self->output = TSQL;
+            }
+            else
+            {
+                self->output = MYSQL;
+            }
+        }
+    }
+    return self;
+}
+~
+
+\newpage
+
+... Table Spec Destruct
+
+~source/c/TableSpec.c~
+TableSpec* TableSpec_destruct( TableSpec* self )
+{
+    if ( self )
+    {
+        Delete( &self->database   );
+        Delete( &self->members    );
+        Delete( &self->options    );
+
+        Delete( &self->name       );
+        Delete( &self->prefix     );
+        Delete( &self->primaryKey );
+    }
+    return self;
+}
+~

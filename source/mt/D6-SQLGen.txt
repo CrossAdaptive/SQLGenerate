@@ -1,0 +1,116 @@
+
+.  SQLGen
+
+!
+~!source/include/sqlgen.h~
+#ifndef SQLGEN_H
+~
+!
+
+,,, Dependencies
+
+~source/include/sqlgen.h~
+#include "libbase.h"
+#include "libbase/Object.private.h"
+#include <ctype.h>
+~
+
+SQLGenerate uses several classes from libbase -- most notably String and Dictionary.
+The 'ctype.h header is included to allow use of the 'tolower' function.
+
+,,, Types
+
+The 'Types' enumeration type is used to record the different SQLGen types.
+
+~source/include/sqlgen.h~
+typedef enum _Types
+{
+    Blob,
+    Bool,
+    Boolean,
+    Char,
+    Coordinate,
+    Date,
+    Datetime,
+    Double,
+    Float,
+    Geo,
+    Guid,
+    Int,
+    Integer,
+    JSON,
+    Longblob,
+    Longtext,
+    Mediumtext,
+    Money,
+    Text,
+    Time,
+    Timestamp,
+    Year
+}
+Types;
+~
+
+\newpage
+
+,,, Constants
+
+The 'Output' enumeration type is used to record the output format to use.
+
+~source/include/sqlgen.h~
+typedef enum _Output
+{
+    MYSQL,
+    PSQL,
+    TSQL,
+    ORACLE
+}
+Output;
+~
+
+\newpage
+
+,,, Native Types
+
+~source/include/sqlgen.h~
+typedef enum _NativeTypes
+{
+    _BLOB,
+    _BOOL,
+    _BOOLEAN,
+    _CHAR,
+    _CHAR36,
+    _DECIMAL112,
+    _DECIMAL307,
+    _DATE,
+    _DATETIME,
+    _DOUBLE,
+    _DOUBLE_PRECISION,
+    _FLOAT,
+    _GEO,
+    _GUID,
+    _INT,
+    _JSON,
+    _LONGBLOB,
+    _LONGTEXT,
+    _MEDIUMTEXT,
+    _MONEY,
+    _REAL,
+    _TEXT,
+    _TIME,
+    _TIMESTAMP,
+    _TIMESTAMPTZ,
+    _YEAR
+}
+NativeTypes;
+~
+
+~source/include/sqlgen.h~
+extern char* typenames[26];
+~
+
+~source/include/sqlgen.h~
+int typemap[4][22];
+
+static void populate_typemap();
+~

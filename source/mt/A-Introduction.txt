@@ -1,0 +1,27 @@
+
+\part{Introduction}
+
+. Introduction
+
+This paper describes 'sqlgen' -- it is the third variant of a tool that converts a /table specification/ into an SQL table definition, as well as stored procedures that may be used to manipulate data within the table.
+
+The first variant -- 'spgen' [1] -- is available as a website (spgen.org), and was implemented in Javascript.
+One web form field is used to supply the name of the table to generate,
+a second is used to specify the table fields using traditional MySQL statements,
+and a third is used to provide a number of options --
+Filter; Module; OrderBy; Prefix; Save; and Security --
+that will be further described below.
+Selecting the "Generate" button causes the aforementioned SQL to be generated in a format that is amenable for pasting into the MySQL console.
+
+The second variant -- 'sqlgen' [2] -- is available as a web service, and was implemented in C# as an Azure Function.
+The purpose of this variant is to be called by a command-line utility -- 'extract' (using libcurl) -- to convert a table specification into SQL statements that are incorporated into an SQL file used to fully initialise a database.
+This variant also allows the ability to generate statements in either MySQL or SQL Server format.
+While, in practice, this Azure Function implementation has been:
+convenient for development as it could be easily modified without needing local changes,
+and "fit for purpose" as it has been very reliable;
+practically speaking, providing the functionality as a web service means that people are  dependent on the continuing availability of that service and their ability to access it.
+
+This third variant is a (largely) backwards compatible reimplementation of 'sqlgen' (hense the same name) in C (for maximum portability) as an open source (GPL) standalone command-line program.
+The main differences between this variant and the Azure web function are:
+error messages -- the previous version was rather mute;
+and the ability to passed multiple table definitions.

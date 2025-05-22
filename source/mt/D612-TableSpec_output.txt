@@ -1,0 +1,76 @@
+
+\newpage
+
+... TableSpec Output
+
+*Private Functions*
+
+~source/c/TableSpec.c~
+static void _outputSQL                         ( TableSpec* self, IO* out );
+static void _outputView                        ( TableSpec* self, IO* out );
+static void _outputTable                       ( TableSpec* self, IO* out );
+static void _outputTableMembers                ( TableSpec* self, IO* out );
+static void _outputTableMeta                   ( const String* prefix, int maxname, int maxtype, Output output, IO* out );
+~
+
+~source/c/TableSpec.c~
+static void _outputQuery                       ( TableSpec* self, IO* out );
+static void _outputQueryParameters             ( TableSpec* self, IO* out );
+static void _outputQueryIfStatement            ( TableSpec* self, IO* out );
+static void _outputQueryIfStatementFor         ( TableSpec* self, IO* out, int i, const char* order_by );
+static void _outputQueryIfStatementWhereClauses( TableSpec* self, IO* out );
+~
+
+~source/c/TableSpec.c~
+static void _outputReplace                       ( TableSpec* self, IO* out );
+static void _outputReplaceParameters             ( TableSpec* self, IO* out );
+static void _outputReplaceFields                 ( TableSpec* self, IO* out );
+static void _outputReplaceValues                 ( TableSpec* self, IO* out );
+static void _outputReplaceUpdate                 ( TableSpec* self, IO* out );
+~
+
+~source/c/TableSpec.c~
+static void _outputSave                          ( TableSpec* self, IO* out );
+static void _outputSaveParameters                ( TableSpec* self, IO* out );
+static void _outputSaveWhenStatements            ( TableSpec* self, IO* out );
+~
+
+~source/c/TableSpec.c~
+static void _outputDelete                        ( TableSpec* self, IO* out );
+static void _outputDeleteParameters              ( TableSpec* self, IO* out );
+static void _outputDeleteUpdateStatement         ( TableSpec* self, IO* out );
+~
+
+~source/c/TableSpec.c~
+void
+TableSpec_output( TableSpec* self, IO* out )
+{
+    if ( self->valid )
+    {
+        IO_setTabspace( out, true );
+        _outputSQL( self, out );
+        IO_flushAll();
+    }
+}
+~
+
+~source/c/TableSpec.c~
+void
+_outputSQL( TableSpec* self, IO* out )
+{
+    if ( self->database )
+    {
+        _outputView( self, out );
+    }
+    else
+    {
+        _outputTable( self, out );
+    }
+
+    _outputQuery  ( self, out );
+    //_outputReplace( self, out );
+    //_outputSave   ( self, out );
+    //_outputDelete ( self, out );
+
+}
+~

@@ -1,0 +1,167 @@
+
+\newpage
+
+. Appendix - Populate Type Map
+
+
+~source/c/main.c~
+char* typenames[26]
+=
+{
+    "BLOB",
+    "BOOL",
+    "BOOLEAN",
+    "CHAR",
+    "CHAR(36)",
+    "DECIMAL(11,2)",
+    "DECIMAL(30,7)",
+    "DATE",
+    "DATETIME",
+    "DOUBLE",
+    "DOUBLE_PRECISION",
+    "FLOAT",
+    "GEO",
+    "GUID",
+    "INT",
+    "JSON",
+    "LONGBLOB",
+    "LONGTEXT",
+    "MEDIUMTEXT",
+    "MONEY",
+    "REAL",
+    "TEXT",
+    "TIME",
+    "TIMESTAMP",
+    "TIMESTAMPTZ",
+    "YEAR"
+};
+~
+
+~source/c/main.c~
+static void populate_typemap_mysql ();
+static void populate_typemap_psql  ();
+static void populate_typemap_tsql  ();
+static void populate_typemap_oracle();
+~
+
+~source/c/main.c~
+static void populate_typemap()
+{
+    populate_typemap_mysql ();
+    populate_typemap_psql  ();
+    populate_typemap_tsql  ();
+    populate_typemap_oracle();
+}
+~
+
+~source/c/main.c~
+static void populate_typemap_mysql()
+{
+    typemap[MYSQL][Blob]       = _BLOB;
+    typemap[MYSQL][Bool]       = _BOOL;
+    typemap[MYSQL][Boolean]    = _BOOLEAN;
+    typemap[MYSQL][Char]       = _CHAR;
+    typemap[MYSQL][Coordinate] = _DECIMAL307;
+    typemap[MYSQL][Date]       = _DATE;
+    typemap[MYSQL][Datetime]   = _DATETIME;
+    typemap[MYSQL][Double]     = _DOUBLE;
+    typemap[MYSQL][Float]      = _FLOAT;
+    typemap[MYSQL][Geo]        = _GEO;
+    typemap[MYSQL][Guid]       = _CHAR36;
+    typemap[MYSQL][Int]        = _INT;
+    typemap[MYSQL][Integer]    = _INT;
+    typemap[MYSQL][JSON]       = _JSON;
+    typemap[MYSQL][Longblob]   = _LONGBLOB;
+    typemap[MYSQL][Longtext]   = _LONGTEXT;
+    typemap[MYSQL][Mediumtext] = _MEDIUMTEXT;
+    typemap[MYSQL][Money]      = _DECIMAL112;
+    typemap[MYSQL][Text]       = _TEXT;
+    typemap[MYSQL][Time]       = _TIME;
+    typemap[MYSQL][Timestamp]  = _TIMESTAMP;
+    typemap[MYSQL][Year]       = _YEAR;
+}
+~
+
+~source/c/main.c~
+static void populate_typemap_psql()
+{
+    typemap[PSQL][Blob]        = _BLOB;
+    typemap[PSQL][Bool]        = _BOOL;
+    typemap[PSQL][Boolean]     = _BOOLEAN;
+    typemap[PSQL][Char]        = _CHAR;
+    typemap[PSQL][Coordinate]  = _DECIMAL307;
+    typemap[PSQL][Date]        = _DATE;
+    typemap[PSQL][Datetime]    = _TIMESTAMP;
+    typemap[PSQL][Double]      = _DOUBLE_PRECISION;
+    typemap[PSQL][Float]       = _REAL;
+    typemap[PSQL][Geo]         = _GEO;
+    typemap[PSQL][Guid]        = _CHAR36;
+    typemap[PSQL][Int]         = _INT;
+    typemap[PSQL][Integer]     = _INT;
+    typemap[PSQL][JSON]        = _JSON;
+    typemap[PSQL][Longblob]    = _LONGBLOB;
+    typemap[PSQL][Longtext]    = _TEXT;
+    typemap[PSQL][Mediumtext]  = _TEXT;
+    typemap[PSQL][Money]       = _DECIMAL112;
+    typemap[PSQL][Text]        = _TEXT;
+    typemap[PSQL][Time]        = _TIME;
+    typemap[PSQL][Timestamp]   = _TIMESTAMPTZ;
+    typemap[PSQL][Year]        = _YEAR;
+}
+~
+
+~source/c/main.c~
+static void populate_typemap_tsql()
+{
+    typemap[PSQL][Blob]        = _BLOB;
+    typemap[PSQL][Bool]        = _BOOL;
+    typemap[PSQL][Boolean]     = _BOOLEAN;
+    typemap[PSQL][Char]        = _CHAR;
+    typemap[PSQL][Coordinate]  = _DECIMAL307;
+    typemap[PSQL][Date]        = _DATE;
+    typemap[PSQL][Datetime]    = _TIMESTAMP;
+    typemap[PSQL][Double]      = _DOUBLE_PRECISION;
+    typemap[PSQL][Float]       = _REAL;
+    typemap[PSQL][Geo]         = _GEO;
+    typemap[PSQL][Guid]        = _CHAR36;
+    typemap[PSQL][Int]         = _INT;
+    typemap[PSQL][Integer]     = _INT;
+    typemap[PSQL][JSON]        = _JSON;
+    typemap[PSQL][Longblob]    = _LONGBLOB;
+    typemap[PSQL][Longtext]    = _TEXT;
+    typemap[PSQL][Mediumtext]  = _TEXT;
+    typemap[PSQL][Money]       = _DECIMAL112;
+    typemap[PSQL][Text]        = _TEXT;
+    typemap[PSQL][Time]        = _TIME;
+    typemap[PSQL][Timestamp]   = _TIMESTAMPTZ;
+    typemap[PSQL][Year]        = _YEAR;
+}
+~
+
+~source/c/main.c~
+static void populate_typemap_oracle()
+{
+    typemap[PSQL][Blob]        = _BLOB;
+    typemap[PSQL][Bool]        = _BOOL;
+    typemap[PSQL][Boolean]     = _BOOLEAN;
+    typemap[PSQL][Char]        = _CHAR;
+    typemap[PSQL][Coordinate]  = _DECIMAL307;
+    typemap[PSQL][Date]        = _DATE;
+    typemap[PSQL][Datetime]    = _TIMESTAMP;
+    typemap[PSQL][Double]      = _DOUBLE_PRECISION;
+    typemap[PSQL][Float]       = _REAL;
+    typemap[PSQL][Geo]         = _GEO;
+    typemap[PSQL][Guid]        = _CHAR36;
+    typemap[PSQL][Int]         = _INT;
+    typemap[PSQL][Integer]     = _INT;
+    typemap[PSQL][JSON]        = _JSON;
+    typemap[PSQL][Longblob]    = _LONGBLOB;
+    typemap[PSQL][Longtext]    = _TEXT;
+    typemap[PSQL][Mediumtext]  = _TEXT;
+    typemap[PSQL][Money]       = _DECIMAL112;
+    typemap[PSQL][Text]        = _TEXT;
+    typemap[PSQL][Time]        = _TIME;
+    typemap[PSQL][Timestamp]   = _TIMESTAMPTZ;
+    typemap[PSQL][Year]        = _YEAR;
+}
+~

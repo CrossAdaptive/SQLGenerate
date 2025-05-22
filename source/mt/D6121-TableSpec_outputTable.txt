@@ -1,0 +1,264 @@
+
+.... output Table
+
+~source/c/TableSpec.c~
+static void _outputTableMember    ( TableSpec* self, const Entry* entry, const String* prefix, int maxname, int maxtype, bool last, IO* out );
+static void _outputTablePrimaryKey( TableSpec* self, const char*  primary, IO* out );
+
+~
+
+~
+CREATE VIEW <table name> AS
+    SELECT * FROM <database>.<table name>
+    ;
+
+~
+
+~source/c/TableSpec.c~
+void
+_outputView( TableSpec* self, IO* out )
+{
+    IO_print( out, "CREATE VIEW "                      );
+    IO_print( out, String_getContent( self->name )     );
+    IO_print( out, " "                                 );
+    IO_print( out, "AS"                                );
+    IO_print( out, "\n"                                );
+    IO_print( out, "\t"                                );
+    IO_print( out, "SELECT * FROM "                    );
+    IO_print( out, String_getContent( self->database ) );
+    IO_print( out, "."                                 );
+    IO_print( out, String_getContent( self->name     ) );
+    IO_print( out, "\n"                                );
+    IO_print( out, ";"                                 );
+    IO_print( out, "\n"                                );
+}
+~
+
+~source/c/TableSpec.c~
+void
+_outputTable( TableSpec* self, IO* out )
+{
+    IO_print( out, "CREATE TABLE "               );
+    IO_print( out, String_getChars( self->name ) );
+    IO_print( out, "\n(\n"                       );
+
+    _outputTableMembers( self, out );
+
+    IO_print( out, ");" );
+    IO_print( out, "\n" );
+
+    IO_flushAll();
+}
+~
+
+~source/c/TableSpec.c~
+void _outputTableMembers( TableSpec* self, IO* out )
+{
+          int     maxname =                 CharString_length    ( "created"               );
+          int     maxtype =                 CharString_length    ( "DECIMAL(10,7)"         );
+          int     typesuf =                 0;
+    const Array*  entries =                 Dictionary_getEntries( self->members           ); 
+    const String* prefix  = (const String*) Dictionary_find_key  ( self->options, "Prefix" );
+    const char*   primary =                 null;
+
+    if ( prefix )
+    {
+        maxname += String_getLength( prefix );
+    }
+
+    int n = Array_getCount( entries );
+    for ( int i=0; i < n; i++ )
+    {
+        const Entry*  entry = Array_get_index( entries, i );
+        const String* key   = (const String*) Entry_getKey  ( entry );
+        const Type*   type  = (const Type*)   Entry_getValue( entry );
+        const char*   name  = (const char*)   Type_translateName( type, self->output, true );
+              int     klen  = String_getLength( key  );
+              int     tlen  = CharString_length( name );
+
+        maxname = (maxname > klen) ? maxname : klen;
+        maxtype = (maxtype > tlen) ? maxtype : tlen;
+
+        if ( type->primary )
+        {
+            primary = String_getContent( key );
+        }
+
+        if ( type->size > 0 )
+        {
+            String* s       = String_new_value( type->size );
+            int     slen    = (2 + String_getLength( s ));
+                    typesuf = (typesuf > slen) ? typesuf : slen;
+
+            Delete( &s );
+        }
+    }
+
+    maxtype += typesuf;
+
+    for ( int i=0; i < n; i++ )
+    {
+        bool last = (i == (n-1));
+
+        const Entry* entry = Array_get_index( entries, i );
+
+        if ( entry )
+        {
+            _outputTableMember( self, entry, prefix, maxname, maxtype, last, out );
+        }
+    }
+
+    _outputTablePrimaryKey( self, primary, out );
+}
+~
+
+~source/c/TableSpec.c~
+void _outputTableMember( TableSpec* self, const Entry* entry, const String* prefix, int maxname, int maxtype, bool last, IO* out )
+{
+    const char*   primary =                 null;
+
+    const String* key  = (const String*) Entry_getKey  ( entry );
+    const Type*   type = (const Type*)   Entry_getValue( entry );
+
+    String* _name = String_new_length( String_getContent( key              ), maxname );
+    String* _type = String_new_length( String_getContent( type->translated ), maxtype );
+
+    IO_print( out, "\t" );
+    IO_print( out, String_getContent( _name ) );
+    IO_print( out, " " );
+    IO_print( out, String_getContent( _type ) );
+    IO_print( out, " " );
+
+    if ( type->foreign )
+    {
+        IO_print( out, "NOT NULL" );
+    }
+    else
+    if ( type->primary )
+    {
+        primary = String_getContent( key );
+
+        switch( self->output )
+        {
+        case PSQL:
+            IO_print( out, "PRIMARY KEY" );
+            break;
+
+        default:
+            IO_print( out, "AUTO_INCREMENT" );
+        }
+    }
+    else
+    {
+        const char* default_value = String_getContent( type->defaultValue );
+
+        IO_print( out, "DEFAULT "    );
+        IO_print( out, default_value );
+    }
+
+    if ( PSQL == self->output && last )
+    {
+
+    }
+    else
+    if ( primary || !last )
+    {
+        IO_print( out, "," );
+    }
+
+    IO_print( out, "\n" );
+
+    if ( type->primary )
+    {
+        _outputTableMeta( prefix, maxname, maxtype, self->output, out );
+    }
+}
+~
+
+~source/c/TableSpec.c~
+void _outputTableMeta( const String* prefix, int maxname, int maxtype, Output output, IO* out )
+{
+    const char* _prefix = prefix ? String_getContent( prefix ) : "";
+
+    String* created1 = String_new_format( "%s%s", _prefix, "created" );
+    String* ts1      = String_new_format( "%s%s", _prefix, "ts"      );
+    String* deleted1 = String_new_format( "%s%s", _prefix, "deleted" );
+
+    String* created2 = String_new_length( String_getContent( created1 ), maxname );
+    String* ts2      = String_new_length( String_getContent( ts1      ), maxname );
+    String* deleted2 = String_new_length( String_getContent( deleted1 ), maxname );
+
+    String* timestamp = null;
+
+    switch( output )
+    {
+    case PSQL:
+        timestamp = String_new_length( "TIMESTAMPTZ", maxtype );
+        break;
+
+    default:
+        timestamp = String_new_length( "TIMESTAMP", maxtype );
+    }
+
+    IO_print( out, "\t" );
+    IO_print( out, String_getContent( created2  ) );
+    IO_print( out, " " );
+    IO_print( out, String_getContent( timestamp ) );
+
+    IO_print( out, " " );
+    IO_print( out, "DEFAULT CURRENT_TIMESTAMP,\n" );
+
+    IO_print( out, "\t" );
+    IO_print( out, String_getContent( ts2       ) );
+    IO_print( out, " " );
+    IO_print( out, String_getContent( timestamp ) );
+    IO_print( out, " " );
+
+    switch( output )
+    {
+    case PSQL:
+        IO_print( out, "DEFAULT CURRENT_TIMESTAMP,\n" );
+        break;
+
+    default:
+        IO_print( out, "DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n" );
+    }
+
+    IO_print( out, "\t" );
+    IO_print( out, String_getContent( deleted2  ) );
+    IO_print( out, " " );
+    IO_print( out, String_getContent( timestamp ) );
+    IO_print( out, " " );
+
+    switch( output )
+    {
+    case PSQL:
+        IO_print( out, "DEFAULT TO_TIMESTAMP(0),\n" );
+        break;
+
+    default:
+        IO_print( out, "DEFAULT 0,\n" );
+    }
+}
+~
+
+~source/c/TableSpec.c~
+static void _outputTablePrimaryKey( TableSpec* self, const char*  primary, IO* out )
+{
+    switch ( self->output )
+    {
+    case PSQL:
+        break;
+    default:
+        if ( primary )
+        {
+            IO_print( out, "\n"           );
+            IO_print( out, "\t"           );
+            IO_print( out, "PRIMARY KEY(" );
+            IO_print( out, primary        );
+            IO_print( out, ")"            );
+            IO_print( out, "\n"           );
+        }
+    }
+}
+~

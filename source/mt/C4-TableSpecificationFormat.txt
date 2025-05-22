@@ -1,0 +1,110 @@
+
+\part{Specification}
+
+. Table Specification Format
+
+Here is an exmple of an 'employees' table specified using an 'sqlgen' table specification.
+Table field names are prefixed by an 'at' symbol -- '@';
+and the field name and type are separated by a colon -- ':'.
+Table options are prefixed with a percentage symbol -- '%';
+and the option name and associated value are separated with an equals symbol -- '='.
+This simplifies parsing as all whitespace between the curly braces including newlines and spaces can be ignored.
+
+~spgen~
+table employees
+{
+    @ORG_ID:              Int*
+    @EMPLOYEE_ID:         Int^
+    @employee_first_name: Text
+    @employee_last_name:  Text
+    @employee_type:       Text[10]
+
+    %Filter   = ORG_ID;EMPLOYEE_ID
+    %Module   = employees
+    %Output   = mysql
+    %OrderBy  = ORG_ID,EMPLOYEE_ID+DESC;employee_type;employee_first_name,employee_last_name
+    %Prefix   = employee_
+    %Save     = employee_first_name;employee_last_type
+    %Security = invoker
+}
+~
+
+Below shows the resulting MySQL table definition.
+
+~tb.sql~
+CREATE TABLE employees
+(
+    ORG_ID              INT       NOT NULL,
+    EMPLOYEE_ID         INT       AUTO_INCREMENT,
+    employee_created    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    employee_ts         TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    employee_deleted    TIMESTAMP DEFAULT  0,
+    employee_first_name TEXT      DEFAULT '',
+    employee_last_name  TEXT      DEFAULT '',
+    employee_type       CHAR(10)  DEFAULT '',
+
+    PRIMARY KEY (EMPLOYEE_ID)
+);
+~
+
+The type 'Int*' is used for fields that hold foreign keys to other tables -- i.e., pointer to an Int.
+The type 'Int' with a caret is used for an auto incrementing primary key.
+Other fields may use types including --
+Char, Date, DateTime, Geo, Int, LongText, Money, Text, etc.
+You can specify the size of a 'Text' value using square brackets.
+See the Appendix for a list of supported types.
+
+You will note that each generated table definition includes implicit fields that are prefixed with the table prefix and suffixed with '_created', '_ts', and '_deleted' that are of type TIMESTAMP.
+The '_created' timestamp is set to the current time when a new row is added to the table,
+the '_ts' timestamp is set to the current time when a field in a row is changed,
+and the '_deleted' can be used to indicate a row has been deleted.
+Note,
+if the '_deleted' timestamp is set,
+this will affect whether or not that row is returned or modified by the generated stored procedures.
+
+,, Generation Options
+
+Each of the table specification options is listed below.
+
+
+~latex~
+\begin{table}[H]
+\begin{tabularx}{\textwidth}{|l|X|}
+\hline
+Option name & Description                                                                  \\
+\hline
+Filter      & Semi-colon separated list of fields to filter by                             \\
+Module      & Single name of module (currently has no real effect)                         \\
+Output      & Currently either 'mysq' or 'tsql'                                            \\
+OrderBy     & Semi-colon separated list of comma separated order by grouping               \\
+Prefix      & Single name including training underscore used to create implicit fields     \\
+Save        & Semi-colon separated list of field names that the save procedure can update  \\
+Security    & Either 'invoker' or 'definer' -- used to specify SQL SECURITY mode           \\
+\hline
+\end{tabularx}
+\end{table}
+~
+
+,, Generated Procedures
+
+Currently,
+three procedures are generated for each table definition unless a "Save" table option is specified.
+The name of each generated procedure is prefixed with 'spgen_'.
+Each procedure then includes the name of the table in lower case.
+Then a suffix is added for each additional procedure type --
+'_replace', '_save', or '_delete'.
+
+~latex~
+\begin{table}[H]
+\begin{tabularx}{\textwidth}{|l|l|X|}
+\hline
+Procedure type   & Suffix & Example procedure name                                         \\
+\hline
+Query       & None       & 'spgen_employees'                                               \\
+Replace     & '_replace' & 'spgen_employees_replace'                                       \\
+Save        & '_save'    & 'spgen_employees_save'                                          \\
+Delete      & '_delete'  & 'spgen_employees_delete'                                        \\
+\hline
+\end{tabularx}
+\end{table}
+~
