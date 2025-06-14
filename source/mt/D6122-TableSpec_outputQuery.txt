@@ -359,7 +359,7 @@ _outputQueryIfStatementWhereClauses( TableSpec* self, IO* out )
 
     if ( !primary_key_in_filter )
     {
-        IO_print( out, "'1970-01-01 00:00:00+00')"                              );
+        IO_print( out, "0)"                              );
     }
     else
     {

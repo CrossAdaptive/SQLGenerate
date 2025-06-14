@@ -68,9 +68,9 @@ _outputSQL( TableSpec* self, IO* out )
     }
 
     _outputQuery  ( self, out );
-    //_outputReplace( self, out );
-    //_outputSave   ( self, out );
-    //_outputDelete ( self, out );
+    _outputReplace( self, out );
+    _outputSave   ( self, out );
+    _outputDelete ( self, out );
 
 }
 ~

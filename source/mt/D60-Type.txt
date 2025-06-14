@@ -240,7 +240,7 @@ const char* Type_translateName( const Type* type, Output output, bool table )
     else
     if ( CharString_contentEquals( type_name, "Text" ) )
     {
-        ret = type->size ? "CHAR" : "TEXT";
+        ret = type->size ? "TEXT" : "TEXT";
     }
     else
     if ( CharString_contentEquals( type_name, "Time" ) )

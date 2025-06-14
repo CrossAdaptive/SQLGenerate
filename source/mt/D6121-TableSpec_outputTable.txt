@@ -156,16 +156,7 @@ void _outputTableMember( TableSpec* self, const Entry* entry, const String* pref
         IO_print( out, default_value );
     }
 
-    if ( PSQL == self->output && last )
-    {
-
-    }
-    else
-    if ( primary || !last )
-    {
-        IO_print( out, "," );
-    }
-
+    IO_print( out, "," );
     IO_print( out, "\n" );
 
     if ( type->primary )
