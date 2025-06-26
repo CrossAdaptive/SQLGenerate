@@ -176,23 +176,36 @@ _outputQueryParameters( TableSpec* self, IO* out )
 void
 _outputQueryIfStatement( TableSpec* self, IO* out )
 {
-    const String* order  = (const String*) Dictionary_find_key( self->options, "OrderBy" );
-          int     i      = 0;
+    const String* order = (const String*) Dictionary_find_key( self->options, "OrderBy" );
+    const String* dflt  = null;
+          int     i     = 0;
 
     if ( order )
     {
         Array* options = String_toArray_separator( order, ';' );
         int    n       = Array_getCount( options );
 
+        if ( 0 < n )
+        {
+            dflt = (String*) Array_get_index( options, 0 );
+        }
+
         for ( i=0; i < n; i++ )
         {
             const String* option = (String*) Array_get_index( options, i );
 
-            _outputQueryIfStatementFor( self, out, i, String_getContent( option ) );
+            _outputQueryIfStatementFor( self, out, i, String_getContent( option ), String_getContent( dflt ) );
         }
     }
 
-    _outputQueryIfStatementFor( self, out, i, "" );
+    if ( dflt )
+    {
+        _outputQueryIfStatementFor( self, out, i, "", String_getContent( dflt ) );
+    }
+    else
+    {
+        _outputQueryIfStatementFor( self, out, i, "", "" );
+    }
 
     IO_print( out, "\t"                                                               );
     IO_print( out, "ELSE"                                                             );
@@ -233,7 +246,7 @@ _outputQueryIfStatement( TableSpec* self, IO* out )
 
 ~source/c/TableSpec.c~
 void
-_outputQueryIfStatementFor( TableSpec* self, IO* out, int i, const char* order_by )
+_outputQueryIfStatementFor( TableSpec* self, IO* out, int i, const char* order_by, const char* dflt )
 {
     const char*   dollar = (PSQL == self->output) ? "p_" : "$";
     const String* view   = (const String*) Dictionary_find_key( self->options, "View" );
@@ -285,6 +298,15 @@ _outputQueryIfStatementFor( TableSpec* self, IO* out, int i, const char* order_b
         IO_print( out, "\t"            );
         IO_print( out, "ORDER BY "     );
         IO_print( out, order_by        );
+        IO_print( out, "\n"            );
+    }
+    else
+    if ( CharString_length( dflt ) )
+    {
+        IO_print( out, "\t"            );
+        IO_print( out, "\t"            );
+        IO_print( out, "ORDER BY "     );
+        IO_print( out, dflt            );
         IO_print( out, "\n"            );
     }
 
