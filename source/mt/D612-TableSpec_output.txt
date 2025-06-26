@@ -17,7 +17,7 @@ static void _outputTableMeta                   ( const String* prefix, int maxna
 static void _outputQuery                       ( TableSpec* self, IO* out );
 static void _outputQueryParameters             ( TableSpec* self, IO* out );
 static void _outputQueryIfStatement            ( TableSpec* self, IO* out );
-static void _outputQueryIfStatementFor         ( TableSpec* self, IO* out, int i, const char* order_by );
+static void _outputQueryIfStatementFor         ( TableSpec* self, IO* out, int i, const char* order_by, const char* dflt );
 static void _outputQueryIfStatementWhereClauses( TableSpec* self, IO* out );
 ~
 
