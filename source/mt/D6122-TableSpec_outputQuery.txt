@@ -114,6 +114,11 @@ _outputQueryParameters( TableSpec* self, IO* out )
         const Type*   type = (const Type*)   Dictionary_find_key( self->members, String_getContent( part ) );
         const char*  _type = "TEXT";
 
+        if ( String_endsWith( part, "_ID" ) )
+        {
+            _type = "INT";
+        }
+
         if ( type )
         {
             if ( String_contentEquals( type->translated, "SERIAL" ) )
@@ -402,6 +407,11 @@ _outputQueryIfStatementWhereClauses( TableSpec* self, IO* out )
     {
         const String* part          = (const String*) Array_get_index( parts, i );
         const char*   default_value = "''";
+
+        if ( String_endsWith( part, "_ID" ) )
+        {
+            default_value = "0";
+        }
 
         String* _part = String_new_length( String_getContent( part ), max );
 
